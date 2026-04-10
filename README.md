@@ -10,3 +10,6 @@ python seed.py
 pip install -r requirements.txt
 
 http://localhost:8000
+
+
+##วิธีการใช้งาน
