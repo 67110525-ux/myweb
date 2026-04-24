@@ -220,36 +220,37 @@ def pvs_upload(request: Request):
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-import easyocr
+# import easyocr
 import re
 
-reader = easyocr.Reader(['th','en'])
+# reader = easyocr.Reader(['th','en'])
 
 
-def parse_thai_datetime(text):
-    thai_months = {
-        "ม.ค.": 1, "ก.พ.": 2, "มี.ค.": 3,
-        "เม.ย.": 4, "พ.ค.": 5, "มิ.ย.": 6,
-        "ก.ค.": 7, "ส.ค.": 8, "ก.ย.": 9,
-        "ต.ค.": 10, "พ.ย.": 11, "ธ.ค.": 12
-    }
+# def parse_thai_datetime(text):
+#     thai_months = {
+#         "ม.ค.": 1, "ก.พ.": 2, "มี.ค.": 3,
+#         "เม.ย.": 4, "พ.ค.": 5, "มิ.ย.": 6,
+#         "ก.ค.": 7, "ส.ค.": 8, "ก.ย.": 9,
+#         "ต.ค.": 10, "พ.ย.": 11, "ธ.ค.": 12
+#     }
 
-    match = re.search(
-        r'(\d{1,2})\s+([^\s]+)\s+(\d{2})(?:.*?(\d{1,2}):(\d{2}))?',
-        text
-    )
+#     match = re.search(
+#         r'(\d{1,2})\s+([^\s]+)\s+(\d{2})(?:.*?(\d{1,2}):(\d{2}))?',
+#         text
+#     )
 
-    if not match:
-        raise ValueError("Invalid date format")
+#     if not match:
+#         raise ValueError("Invalid date format")
 
-    day = int(match.group(1))
-    month = thai_months.get(match.group(2), 1)
-    year_ad = int(match.group(3)) + 2500 - 543
+#     day = int(match.group(1))
+#     month = thai_months.get(match.group(2), 1)
+#     year_ad = int(match.group(3)) + 2500 - 543
 
-    time_match = re.search(r'(\d{1,2}):(\d{2})', text)
-    hour = int(time_match.group(1))
-    minute = int(time_match.group(2))
-    return datetime(year_ad, month, day, hour, minute)
+#     time_match = re.search(r'(\d{1,2}):(\d{2})', text)
+#     hour = int(time_match.group(1))
+#     minute = int(time_match.group(2))
+#     return datetime(year_ad, month, day, hour, minute)
+
 
 def process_ocr(image_path):
     result = reader.readtext(image_path)
