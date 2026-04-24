@@ -14,3 +14,8 @@ http://localhost:8000
 
 ##วิธีการใช้งาน
 1
+ ##git reset --hard
+ ลบแบบError ออกหมดเลย
+
+##git reset --soft
+จะเก็บเป็นสำเนาเอาไว้

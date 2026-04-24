@@ -384,5 +384,27 @@ def login(username: str, password: str):
 )
 
 
+print("Edit by me")
+print("99")
+
+
+@app.get('/api/hello')
+def hello_api():
+    return {'message': 'API Works!'}
+
+@app.get('/api/grade')
+def grade_api(score:float = None):
+    if score >= 85:
+        return {'grade': 'A'}
+    elif score >= 75 and score < 85:
+        return {'grade': 'B+'}
+    return {'grade': 'F'}
+
+
+
+
+
 
 # http://localhost:8000/
+
+
