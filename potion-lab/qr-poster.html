@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>QR โรงปรุงยาใต้แสงจันทร์</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Srisakdi:wght@700&family=Bai+Jamjuree:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: dark;
+  --bg1:#120a30; --bg2:#2b1866; --text:#efe9ff; --muted:#b8acd9; --gold:#ffd36e; --panel:rgba(30,16,70,.7); --edge:rgba(255,211,110,.4);
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bg1:#0e0828; --bg2:#26155c; } }
+:root[data-theme="dark"]{ --bg1:#0e0828; --bg2:#26155c; }
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0; min-height:100%}
+body{font-family:'Bai Jamjuree', 'Leelawadee UI', 'Thonburi', sans-serif; color:var(--text); background:linear-gradient(180deg,var(--bg1),var(--bg2)); background-color:var(--bg1); padding:24px 16px 40px}
+.wrap{max-width:980px; margin:0 auto; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.1fr); gap:24px; align-items:start}
+@media (max-width:820px){ .wrap{grid-template-columns:minmax(0,1fr)} }
+.panel{background:var(--panel); border:1px solid var(--edge); border-radius:22px; padding:22px}
+h1{font-family:'Srisakdi','Bai Jamjuree',serif; font-size:2rem; margin:0 0 6px; color:var(--gold); text-shadow:0 0 14px rgba(255,190,80,.4)}
+p{color:var(--muted); line-height:1.6; margin:0 0 14px; font-size:.92rem}
+label{display:block; font-weight:700; margin:14px 0 6px; font-size:.9rem}
+input{width:100%; padding:12px 14px; border-radius:14px; border:1px solid rgba(195,168,255,.4); background:rgba(8,4,24,.6); color:var(--text); font:inherit; font-size:.9rem; outline:none}
+input:focus{border-color:var(--gold)}
+.btns{display:grid; gap:10px; margin-top:18px}
+button{font:inherit; cursor:pointer; border:0; border-radius:14px; padding:13px 16px; font-weight:700}
+.gold{background:linear-gradient(180deg,#ffe08a,#f2a93b); color:#3a1d00; box-shadow:0 4px 0 #9a5a10}
+.gold:active{transform:translateY(2px); box-shadow:0 2px 0 #9a5a10}
+.ghost{background:rgba(255,255,255,.06); color:var(--text); border:1px solid rgba(195,168,255,.4)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--gold); outline-offset:2px}
+.note{font-size:.8rem; margin-top:12px}
+.preview{text-align:center}
+.preview img{width:100%; max-width:460px; border-radius:14px; box-shadow:0 0 40px rgba(255,200,80,.35)}
+#qr-src{position:absolute; left:-9999px; top:0}
+.toast{position:fixed; left:50%; bottom:calc(20px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); background:#2a1660; border:1px solid var(--gold); padding:10px 18px; border-radius:12px; opacity:0; transition:opacity .3s; pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="panel">
+    <h1>สร้าง QR ไปที่โรงปรุงยา</h1>
+    <p>วางลิงก์ของเว็บที่ต้องการให้น้องๆ สแกน แล้วกดสร้างโปสเตอร์ จะได้รูปพร้อมพิมพ์ติดบูธ</p>
+    <label for="url">ลิงก์ของเว็บ</label>
+    <input id="url" type="url" value="https://claude.ai/artifact/Q276ZFcG8iVUraRpL1s65K" spellcheck="false">
+    <label for="cap">ข้อความชวนสแกน</label>
+    <input id="cap" type="text" value="สแกนเพื่อค้นหาพลังที่ซ่อนอยู่ในตัวคุณ">
+    <div class="btns">
+      <button class="gold" id="make">✨ สร้างโปสเตอร์ใหม่</button>
+      <button class="ghost" id="save-poster">ดาวน์โหลดโปสเตอร์ (PNG)</button>
+      <button class="ghost" id="save-qr">ดาวน์โหลดเฉพาะ QR (PNG)</button>
+    </div>
+    <p class="note" id="note">ถ้าปุ่มดาวน์โหลดใช้ไม่ได้ ให้กดค้างที่รูปโปสเตอร์ (มือถือ) หรือคลิกขวา (คอม) แล้วเลือกบันทึกรูป</p>
+  </div>
+  <div class="preview"><img id="poster" alt="โปสเตอร์ QR โรงปรุงยาใต้แสงจันทร์"></div>
+</div>
+<div id="qr-src" aria-hidden="true"></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+let posterBlob = null, qrBlob = null;
+function toast(m){ const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 2600); }
+function rr(c, x, y, w, h, r){ c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+function star4(c, x, y, r, col){ c.save(); c.shadowColor = col; c.shadowBlur = r; c.fillStyle = col; c.beginPath(); c.moveTo(x, y - r);
+  c.quadraticCurveTo(x + r*.18, y - r*.18, x + r, y); c.quadraticCurveTo(x + r*.18, y + r*.18, x, y + r); c.quadraticCurveTo(x - r*.18, y + r*.18, x - r, y); c.quadraticCurveTo(x - r*.18, y - r*.18, x, y - r); c.fill(); c.restore(); }
+function goldG(c, y0, y1){ const g = c.createLinearGradient(0, y0, 0, y1); g.addColorStop(0, '#fff3c4'); g.addColorStop(.4, '#f5c55a'); g.addColorStop(.75, '#c98a24'); g.addColorStop(1, '#ffe08a'); return g; }
+function ghost(c, x, y, s){ c.save(); c.translate(x, y); c.scale(s, s); c.translate(-50, -60); c.shadowColor = '#c084fc'; c.shadowBlur = 30; c.fillStyle = '#fbf8ff';
+  c.beginPath(); c.moveTo(50, 22); c.bezierCurveTo(24, 22, 14, 42, 14, 62); c.lineTo(14, 96); c.quadraticCurveTo(22, 86, 30, 98); c.quadraticCurveTo(40, 86, 50, 99); c.quadraticCurveTo(60, 86, 70, 98); c.quadraticCurveTo(78, 86, 86, 96); c.lineTo(86, 62); c.bezierCurveTo(86, 42, 76, 22, 50, 22); c.fill();
+  c.shadowBlur = 0; c.fillStyle = '#2a1a4a'; [[39,60],[61,60]].forEach(([a, b]) => { c.beginPath(); c.ellipse(a, b, 5.5, 7, 0, 0, 7); c.fill(); });
+  c.fillStyle = '#fff'; [[37.5,57],[59.5,57]].forEach(([a, b]) => { c.beginPath(); c.arc(a, b, 2, 0, 7); c.fill(); });
+  c.fillStyle = 'rgba(255,140,180,.6)'; [[30,71],[70,71]].forEach(([a, b]) => { c.beginPath(); c.ellipse(a, b, 6, 3, 0, 0, 7); c.fill(); });
+  c.fillStyle = '#7a2a4a'; c.beginPath(); c.moveTo(44, 70); c.quadraticCurveTo(50, 79, 56, 70); c.closePath(); c.fill();
+  c.fillStyle = '#3b1f80'; c.beginPath(); c.moveTo(27, 28); c.lineTo(48, -10); c.quadraticCurveTo(56, -16, 62, -8); c.quadraticCurveTo(66, 0, 74, 2); c.quadraticCurveTo(66, 6, 70, 28); c.closePath(); c.fill();
+  c.fillStyle = '#26124f'; c.beginPath(); c.ellipse(50, 28, 34, 7, 0, 0, 7); c.fill(); c.fillStyle = '#ff8a2a'; c.fillRect(30, 21, 40, 5); c.restore(); }
+function pumpkin(c, x, y, s){ c.save(); c.translate(x, y); c.scale(s, s); c.shadowColor = 'rgba(255,140,30,.9)'; c.shadowBlur = 36;
+  const g = c.createRadialGradient(-12, -14, 6, 0, 0, 60); g.addColorStop(0, '#ffb04a'); g.addColorStop(.7, '#f06a12'); g.addColorStop(1, '#a8420a'); c.fillStyle = g;
+  [[-26,0,30,40],[26,0,30,40],[-12,0,30,44],[12,0,30,44],[0,0,28,46]].forEach(([a, b, rx, ry]) => { c.beginPath(); c.ellipse(a, b, rx, ry, 0, 0, 7); c.fill(); });
+  c.shadowBlur = 0; c.fillStyle = '#4d6b2c'; c.fillRect(-5, -54, 10, 14); c.shadowColor = '#ffdd55'; c.shadowBlur = 16; c.fillStyle = '#ffe066';
+  c.beginPath(); c.moveTo(-26, -10); c.lineTo(-10, -12); c.lineTo(-18, 4); c.fill(); c.beginPath(); c.moveTo(26, -10); c.lineTo(10, -12); c.lineTo(18, 4); c.fill();
+  c.beginPath(); c.moveTo(-30, 12); c.quadraticCurveTo(0, 40, 30, 12); c.lineTo(20, 16); c.lineTo(14, 24); c.lineTo(6, 18); c.lineTo(-2, 26); c.lineTo(-10, 18); c.lineTo(-18, 24); c.lineTo(-22, 16); c.closePath(); c.fill(); c.restore(); }
+function wrap(c, text, maxW){ const seg = (window.Intl && Intl.Segmenter) ? [...new Intl.Segmenter('th', { granularity:'word' }).segment(text)].map(s => s.segment) : [...text];
+  const out = []; let line = ''; seg.forEach(p => { const t = line + p; if (c.measureText(t).width > maxW && line){ out.push(line.trim()); line = p; } else line = t; }); if (line.trim()) out.push(line.trim()); return out; }
+
+async function makeQR(url){
+  const box = $('qr-src'); box.innerHTML = '';
+  new QRCode(box, { text:url, width:1024, height:1024, colorDark:'#1a0d40', colorLight:'#ffffff', correctLevel:QRCode.CorrectLevel.H });
+  await new Promise(r => setTimeout(r, 60));
+  return box.querySelector('canvas');
+}
+async function build(){
+  const url = $('url').value.trim();
+  if (!/^https?:\/\//i.test(url)){ toast('ลิงก์ต้องขึ้นต้นด้วย https://'); return; }
+  if (typeof QRCode === 'undefined'){ toast('โหลดตัวสร้าง QR ไม่สำเร็จ ลองรีเฟรชหน้านี้'); return; }
+  try { await Promise.all([document.fonts.load('700 60px "Srisakdi"'), document.fonts.load('700 40px "Bai Jamjuree"')]); } catch(e){}
+  const qc = await makeQR(url);
+  // QR-only image with ghost badge
+  const q = document.createElement('canvas'); q.width = q.height = 1200; const qx = q.getContext('2d');
+  qx.fillStyle = '#fff'; qx.fillRect(0, 0, 1200, 1200); qx.imageSmoothingEnabled = false; qx.drawImage(qc, 88, 88, 1024, 1024);
+  qx.fillStyle = '#fff'; qx.beginPath(); qx.arc(600, 600, 120, 0, 7); qx.fill(); qx.strokeStyle = '#f5c55a'; qx.lineWidth = 10; qx.stroke(); ghost(qx, 600, 605, 1.9);
+  qrBlob = await new Promise(r => q.toBlob(r, 'image/png'));
+
+  const W = 1240, H = 1754, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const c = cv.getContext('2d');
+  const F = '"Bai Jamjuree", "Leelawadee UI", sans-serif';
+  let g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#1d0e46'); g.addColorStop(.6, '#2a1468'); g.addColorStop(1, '#0d0624'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  g = c.createRadialGradient(1075, 150, 10, 1075, 150, 230); g.addColorStop(0, 'rgba(240,230,255,.5)'); g.addColorStop(1, 'rgba(240,230,255,0)'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  c.fillStyle = '#eee4ff'; c.beginPath(); c.arc(1075, 150, 62, 0, 7); c.fill();
+  for (let i = 0; i < 120; i++){ c.fillStyle = `rgba(255,240,210,${.3 + Math.random() * .6})`; c.beginPath(); c.arc(Math.random() * W, Math.random() * H, Math.random() * 2.4 + .4, 0, 7); c.fill(); }
+  c.fillStyle = 'rgba(14,6,36,.9)'; c.beginPath(); c.moveTo(0, H - 330);
+  [[90,H-330],[110,H-420],[130,H-330],[200,H-330],[200,H-470],[230,H-560],[260,H-470],[260,H-330],[330,H-330],[330,H-400],[350,H-450],[370,H-400],[370,H-330],[W,H-330],[W,H],[0,H]].forEach(([x, y]) => c.lineTo(x, y)); c.fill();
+  c.lineWidth = 16; c.strokeStyle = goldG(c, 0, H); c.shadowColor = 'rgba(255,200,80,.85)'; c.shadowBlur = 30; rr(c, 28, 28, W - 56, H - 56, 36); c.stroke(); c.shadowBlur = 0;
+  c.lineWidth = 3; c.strokeStyle = '#c3a8ff'; rr(c, 58, 58, W - 116, H - 116, 24); c.stroke();
+  [[70,70],[W-70,70],[70,H-70],[W-70,H-70]].forEach(([x, y]) => star4(c, x, y, 26, '#ffe08a'));
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = '700 112px "Srisakdi", "Bai Jamjuree", serif';
+  const tg = c.createLinearGradient(0, 150, 0, 360); tg.addColorStop(0, '#fffaf0'); tg.addColorStop(.6, '#e6d3ff'); tg.addColorStop(1, '#9ff6ee');
+  c.fillStyle = tg; c.shadowColor = 'rgba(180,140,255,.9)'; c.shadowBlur = 26;
+  c.fillText('โรงปรุงยา', W / 2, 200); c.fillText('ใต้แสงจันทร์', W / 2, 330); c.shadowBlur = 0;
+  c.font = `600 40px ${F}`; c.fillStyle = '#ffe9a3';
+  wrap(c, $('cap').value.trim() || 'สแกนเพื่อค้นหาพลังที่ซ่อนอยู่ในตัวคุณ', 900).slice(0, 2).forEach((l, i) => c.fillText(l, W / 2, 440 + i * 54));
+  const S = 760, X = (W - S) / 2, Y = 540;
+  c.fillStyle = '#fff'; c.shadowColor = 'rgba(255,200,80,.9)'; c.shadowBlur = 50; rr(c, X - 30, Y - 30, S + 60, S + 60, 36); c.fill(); c.shadowBlur = 0;
+  c.lineWidth = 10; c.strokeStyle = goldG(c, Y - 30, Y + S + 30); c.stroke();
+  c.imageSmoothingEnabled = false; c.drawImage(q, 88, 88, 1024, 1024, X, Y, S, S); c.imageSmoothingEnabled = true;
+  ghost(c, 150, 1040, 2.2); pumpkin(c, 180, H - 220, 1.6); pumpkin(c, W - 180, H - 220, 1.6); pumpkin(c, 330, H - 170, .9);
+  star4(c, W - 150, 760, 18, '#fff3c4'); star4(c, 130, 640, 14, '#fff3c4'); star4(c, W - 120, 1120, 12, '#fff3c4');
+  c.font = `700 46px ${F}`; c.fillStyle = '#fff'; c.fillText('📱 เปิดกล้องมือถือ แล้วสแกนได้เลย', W / 2, Y + S + 100);
+  c.font = '700 64px Georgia, serif'; c.fillStyle = goldG(c, H - 220, H - 160); c.shadowColor = 'rgba(255,200,80,.8)'; c.shadowBlur = 18; c.fillText('ITAI ⚜ DPU', W / 2, H - 190); c.shadowBlur = 0;
+  c.font = '500 30px Georgia, serif'; c.fillStyle = '#f3e3b0'; c.fillText('Potential Kingdom: The Magic Within', W / 2, H - 130);
+  posterBlob = await new Promise(r => cv.toBlob(r, 'image/png'));
+  const img = $('poster'); if (img.src) URL.revokeObjectURL(img.src); img.src = URL.createObjectURL(posterBlob);
+}
+async function save(blob, name){
+  if (!blob){ toast('กดสร้างโปสเตอร์ก่อนนะ'); return; }
+  let dl = null; try { dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null; } catch(e){}
+  if (!dl){ toast('กดค้างที่รูปโปสเตอร์แล้วเลือกบันทึกรูปแทนนะ'); return; }
+  try { await dl.save({ filename:name, data:blob }); toast('บันทึกแล้ว'); } catch(e){ if (!e || e.code !== 'declined') toast('บันทึกไม่สำเร็จ ลองกดค้างที่รูปแทนนะ'); }
+}
+$('make').onclick = build;
+$('save-poster').onclick = () => save(posterBlob, 'โปสเตอร์-QR-โรงปรุงยา.png');
+$('save-qr').onclick = () => save(qrBlob, 'QR-โรงปรุงยา.png');
+window.addEventListener('load', build);
+</script>
+</body>
+</html>
